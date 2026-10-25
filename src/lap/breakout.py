@@ -18,8 +18,9 @@ class BreakoutError(ValueError):
 class BreakoutConfig:
     """Configuration for the volatility breakout signal.
 
-    window: number of trailing bars forming the mean/stdev baseline (>= 2).
-        Bars with fewer than ``window`` predecessors are never flagged.
+    window: number of trailing bars, including the current released bar,
+        forming the mean/stdev baseline (>= 2). Bars with fewer than
+        ``window - 1`` predecessors are never flagged.
     threshold: z-score above which a bar is flagged as a breakout.
     """
 
@@ -61,13 +62,14 @@ def breakout_signals(
     if cfg.window < 2:
         raise BreakoutError("window must be >= 2")
 
-    mean = _mean(closes)
-    stdev = _stdev(closes, mean)
     signals: list[bool] = []
     for i, close in enumerate(closes):
         if i < cfg.window - 1:
             signals.append(False)
             continue
+        trailing = closes[i - cfg.window + 1 : i + 1]
+        mean = _mean(trailing)
+        stdev = _stdev(trailing, mean)
         if stdev == 0:
             signals.append(False)
             continue
